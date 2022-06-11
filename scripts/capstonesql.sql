@@ -7,6 +7,32 @@ ADD COLUMN month_value integer
 UPDATE incidents SET year_value = EXTRACT(YEAR FROM date)
 UPDATE incidents SET month_value = EXTRACT(MONTH FROM date)
 
+--Add new table to lookup month names without 12 case statements 
+CREATE TABLE month_lookup (
+	month_value integer PRIMARY KEY,
+	month_name VARCHAR ( 50 ) 
+);
+
+--Updating newly created table with values 
+INSERT INTO 
+    month_lookup (month_value, month_name)
+VALUES
+    (1,'January'),
+    (2, 'February'),
+    (3, 'March'), 
+	(4, 'April'), 
+	(5, 'May'),
+	(6, 'June'), 
+	(7, 'July'), 
+	(8, 'August'), 
+	(9, 'September'), 
+	(10, 'October'), 
+	(11, 'November'), 
+	(12, 'December');
+
+--Check to make sure table updated correctly
+SELECT * 
+FROM month_lookup
 
 --Sums new cases and averages cumulative cases (because they are cumulative and summing would inflate values) by month and year. Calculates yearly average for new cases per month to compare a given month in that year and determine months where cases were greater than average.  CSV name: casesbymonthwithavg
 SELECT month_value, 
@@ -18,6 +44,19 @@ AVG(SUM(new_confirmed)) OVER (PARTITION BY year_value) AS total_year_avg
 GROUP by month_value, year_value
 ORDER BY year_value DESC, month_value DESC
 
+--Creating a dataset to trend total incidents over time, for use as a baseline. This spans years 2015 - 2022 and will include all incidents of any type. 
+
+SELECT i.month_value, 
+year_value, 
+month_name, 
+COUNT(incident_num) AS incidents_by_month, 
+SUM(COUNT(incident_num)) OVER (PARTITION BY year_value) AS total_year_count, 
+SUM(COUNT(incident_num)) OVER (PARTITION BY year_value)/COUNT(i.month_value) OVER (PARTITION BY year_value) AS incidents_per_month
+	FROM incidents AS i
+LEFT JOIN month_lookup
+	ON i.month_value=month_lookup.month_value
+GROUP by i.month_value, month_name, year_value
+ORDER BY year_value DESC, i.month_value DESC
 
 --Identify top 50 days across all years where cases spiked (top 50 covid days). CSV name: top50coviddays
 SELECT date, 
